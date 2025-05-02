@@ -329,7 +329,7 @@ class PreViewAudio:
     @classmethod
     def INPUT_TYPES(s):
         return {"required":
-                    {"path": ("STRING",),}
+                    {"audio": ("STRING",),}
                 }
 
     CATEGORY = "AIFSH_FishSpeech"
