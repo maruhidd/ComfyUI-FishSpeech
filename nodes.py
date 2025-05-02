@@ -193,7 +193,7 @@ class FishSpeech_INFER_SRT:
           
             new_audio_seg += tmp_audio
 
-        infer_audio = os.path.join(output_path, f"{time.time()}_fishspeech_refer.wav")
+        infer_audio = os.path.join(output_path, f"{int(time.time())}_fishspeech_refer.wav")
         new_audio_seg.export(infer_audio, format="wav")
         return (infer_audio, )
 
@@ -318,7 +318,7 @@ class FishSpeech_INFER:
         p2.wait()
         
         step_2_npy = os.path.join(fish_tmp_out,"codes_0.npy")
-        out_wav_path = os.path.join(output_path,f"{time.time()}_fish_speech.wav")
+        out_wav_path = os.path.join(output_path,f"{int(time.time())}_fish_speech.wav")
         step_3 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {step_2_npy} -o {out_wav_path} -ckpt {vq_model_path} -d {device}"
         print("step 3 ",step_3)
         p3 = Popen(step_3,shell=True)
