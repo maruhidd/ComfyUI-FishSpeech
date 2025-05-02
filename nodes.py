@@ -23,7 +23,7 @@ class FishSpeech_INFER_SRT:
     def INPUT_TYPES(s):
         return {"required":{
             "text":("SRT",),
-            "prompt_audio": ("AUDIO",),
+            "prompt_audio": ("STRING",),
             "prompt_text":("SRT",),
             "if_mutiple_speaker":("BOOLEAN",{
                 "default": False
@@ -71,7 +71,7 @@ class FishSpeech_INFER_SRT:
         }}
     
     CATEGORY = "AIFSH_FishSpeech"
-    RETURN_TYPES = ('AUDIO',)
+    RETURN_TYPES = ('STRING',)
     OUTPUT_NODE = False
 
     FUNCTION = "get_tts_wav"
@@ -82,21 +82,20 @@ class FishSpeech_INFER_SRT:
                     temperature,compile,seed,half,iterative_prompt,max_length,
                     chunk_length):
         
-        filename = f"text2semantic-sft-{text2semantic_type}-v1-4k.pth"
+        filename = f"model.pth"
         t2s_model_path = os.path.join(checkpoint_path, filename)
         if not os.path.isfile(t2s_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename=filename,local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename=filename,local_dir=checkpoint_path,token=hf_token)
         
-        vq_model_path = os.path.join(checkpoint_path, "vq-gan-group-fsq-2x1024.pth")
+        vq_model_path = os.path.join(checkpoint_path, "firefly-gan-vq-fsq-8x1024-21hz-generator.pth")
         if not os.path.isfile(vq_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="vq-gan-group-fsq-2x1024.pth",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="firefly-gan-vq-fsq-8x1024-21hz-generator.pth",local_dir=checkpoint_path,token=hf_token)
         
         tokenizer_path = os.path.join(checkpoint_path, "tokenizer.json")
         
         if not os.path.isfile(tokenizer_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer_config.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="special_tokens_map.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="config.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="special_tokens.json",local_dir=checkpoint_path,token=hf_token)
         
         with open(text, 'r', encoding="utf-8") as file:
             text_file_content = file.read()
@@ -193,7 +192,7 @@ class FishSpeech_INFER_SRT:
           
             new_audio_seg += tmp_audio
 
-        infer_audio = os.path.join(output_path, f"{time.time()}_fishspeech_refer.wav")
+        infer_audio = os.path.join(output_path, f"{int(time.time())}_fishspeech_refer.wav")
         new_audio_seg.export(infer_audio, format="wav")
         return (infer_audio, )
 
@@ -216,7 +215,7 @@ class FishSpeech_INFER:
     @classmethod
     def INPUT_TYPES(s):
         return {"required":{
-            "prompt_audio": ("AUDIO",),
+            "prompt_audio": ("STRING",),
             "text":("STRING",{
                 "multiline": True,
                 "default": "你好啊，世界！"
@@ -268,7 +267,7 @@ class FishSpeech_INFER:
         }}
     
     CATEGORY = "AIFSH_FishSpeech"
-    RETURN_TYPES = ('AUDIO',)
+    RETURN_TYPES = ('STRING',)
     OUTPUT_NODE = False
 
     FUNCTION = "get_tts_wav"
@@ -280,21 +279,20 @@ class FishSpeech_INFER:
         with open(prompt_text_by_srt, 'r', encoding="utf-8") as file:
             file_content = file.read()
         prompt_text = ' '.join([sub.content for sub in list(SrtPare(file_content))])
-        filename = f"text2semantic-sft-{text2semantic_type}-v1-4k.pth"
+        filename = f"model.pth"
         t2s_model_path = os.path.join(checkpoint_path, filename)
         if not os.path.isfile(t2s_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename=filename,local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename=filename,local_dir=checkpoint_path,token=hf_token)
         
-        vq_model_path = os.path.join(checkpoint_path, "vq-gan-group-fsq-2x1024.pth")
+        vq_model_path = os.path.join(checkpoint_path, "firefly-gan-vq-fsq-8x1024-21hz-generator.pth")
         if not os.path.isfile(vq_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="vq-gan-group-fsq-2x1024.pth",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="firefly-gan-vq-fsq-8x1024-21hz-generator.pth",local_dir=checkpoint_path,token=hf_token)
         
         tokenizer_path = os.path.join(checkpoint_path, "tokenizer.json")
         
         if not os.path.isfile(tokenizer_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer_config.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="special_tokens_map.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="config.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="special_tokens.json",local_dir=checkpoint_path,token=hf_token)
         
         python_exec = sys.executable or "python"
         
@@ -318,7 +316,7 @@ class FishSpeech_INFER:
         p2.wait()
         
         step_2_npy = os.path.join(fish_tmp_out,"codes_0.npy")
-        out_wav_path = os.path.join(output_path,f"{time.time()}_fish_speech.wav")
+        out_wav_path = os.path.join(output_path,f"{int(time.time())}_fish_speech.wav")
         step_3 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {step_2_npy} -o {out_wav_path} -ckpt {vq_model_path} -d {device}"
         print("step 3 ",step_3)
         p3 = Popen(step_3,shell=True)
@@ -329,7 +327,7 @@ class PreViewAudio:
     @classmethod
     def INPUT_TYPES(s):
         return {"required":
-                    {"audio": ("AUDIO",),}
+                    {"audio": ("STRING",),}
                 }
 
     CATEGORY = "AIFSH_FishSpeech"
@@ -357,7 +355,7 @@ class LoadFishAudio:
 
     CATEGORY = "AIFSH_FishSpeech"
 
-    RETURN_TYPES = ("AUDIO",)
+    RETURN_TYPES = ("STRING",)
     FUNCTION = "load_audio"
 
     def load_audio(self, audio):
