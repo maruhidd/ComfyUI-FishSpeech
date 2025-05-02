@@ -11,11 +11,15 @@ function previewAudio(node,file){
     while (node.widgets.length > 2){
         node.widgets.pop();
     }
+    // Remove any existing uploadAudio element more safely
     try {
         var el = document.getElementById("uploadAudio");
-        el.remove();
+        if (el) {
+            console.log("Removing existing uploadAudio element");
+            el.remove();
+        }
     } catch (error) {
-        console.log(error);
+        console.error("Error removing existing uploadAudio element:", error);
     }
     var element = document.createElement("div");
     element.id = "uploadAudio";
@@ -53,14 +57,17 @@ function previewAudio(node,file){
     previewWidget.audioEl.muted = false;
     previewWidget.audioEl.style['width'] = "100%"
     previewWidget.audioEl.addEventListener("loadedmetadata", () => {
-
-        previewWidget.aspectRatio = previewWidget.audioEl.audioWidth / previewWidget.audioEl.audioHeight;
-        fitHeight(this);
+        console.log("Audio loaded metadata:", file);
+        // Audio elements don't have width/height properties like video
+        // Set a default aspect ratio for audio elements
+        previewWidget.aspectRatio = 4; // Default aspect ratio for audio display
+        fitHeight(node);
     });
-    previewWidget.audioEl.addEventListener("error", () => {
+    previewWidget.audioEl.addEventListener("error", (e) => {
+        console.error("Error loading audio:", e.target.error, "for file:", file);
         //TODO: consider a way to properly notify the user why a preview isn't shown.
         previewWidget.parentEl.hidden = true;
-        fitHeight(this);
+        fitHeight(node);
     });
 
     let params =  {
@@ -83,7 +90,9 @@ function previewAudio(node,file){
         params.force_size = target_width+"x"+(target_width/ar)
     }
     
-    previewWidget.audioEl.src = api.apiURL('/view?' + new URLSearchParams(params));
+    const audioUrl = api.apiURL('/view?' + new URLSearchParams(params));
+    console.log("Loading audio from URL:", audioUrl, "with params:", params);
+    previewWidget.audioEl.src = audioUrl;
 
     previewWidget.audioEl.hidden = false;
     previewWidget.parentEl.appendChild(previewWidget.audioEl)
@@ -128,12 +137,29 @@ function audioUpload(node, inputName, inputData, app) {
         try {
             // Wrap file in formdata so it includes filename
             const body = new FormData();
-            body.append("image", file);
+            body.append("file", file); // Changed from "image" to "file" for audio uploads
             if (pasted) body.append("subfolder", "pasted");
-            const resp = await api.fetchApi("/upload/image", {
-                method: "POST",
-                body,
-            });
+            console.log("Uploading audio file:", file.name);
+            
+            // Try the audio-specific endpoint first, fall back to image endpoint if needed
+            let resp;
+            try {
+                resp = await api.fetchApi("/upload/audio", {
+                    method: "POST",
+                    body,
+                });
+            } catch (error) {
+                console.warn("Audio upload endpoint failed, trying image endpoint as fallback:", error);
+                // Recreate FormData since it might have been consumed
+                const fallbackBody = new FormData();
+                fallbackBody.append("image", file); // Use "image" key for compatibility
+                if (pasted) fallbackBody.append("subfolder", "pasted");
+                
+                resp = await api.fetchApi("/upload/image", {
+                    method: "POST",
+                    body: fallbackBody,
+                });
+            }
 
             if (resp.status === 200) {
                 const data = await resp.json();
@@ -190,14 +216,13 @@ function audioUpload(node, inputName, inputData, app) {
     return { widget: uploadWidget };
 }
 
-ComfyWidgets.AUDIOPLOAD = audioUpload;
+ComfyWidgets.FISH_AUDIO_UPLOAD = audioUpload;
 
 app.registerExtension({
 	name: "FishSpeech.UploadAudio",
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
 		if (nodeData?.name == "LoadFishAudio") {
-			nodeData.input.required.upload = ["AUDIOPLOAD"];
+			nodeData.input.required.upload = ["FISH_AUDIO_UPLOAD"];
 		}
 	},
 });
-
