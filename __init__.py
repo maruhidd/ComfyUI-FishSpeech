@@ -27,7 +27,7 @@ WEB_DIRECTORY = "./web"
 from .nodes import LoadFishAudio,PreViewAudio,LoadSRT,FishSpeech_INFER,FishSpeech_INFER_SRT
 
 NODE_CLASS_MAPPINGS = {
-    "Fish_AudioLoader": LoadFishAudio,
+    "LoadFishAudio": LoadFishAudio,
     "PreViewAudio": PreViewAudio,
     "LoadSRT": LoadSRT,
     "FishSpeech_INFER": FishSpeech_INFER,
@@ -36,7 +36,7 @@ NODE_CLASS_MAPPINGS = {
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Fish_AudioLoader": "FishSpeech Audio Loader",
+    "LoadFishAudio": "FishSpeech Audio Loader",
     "PreViewAudio": "PreView Audio",
     "LoadSRT": "SRT FILE Loader",
     "FishSpeech_INFER": "FishSpeech Inference",
