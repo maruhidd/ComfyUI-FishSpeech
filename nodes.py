@@ -347,7 +347,7 @@ class PreViewAudio:
         audio_root = os.path.basename(tmp_path)
         return {"ui": {"audio":[audio_name,audio_root]}}
 
-class LoadAudio:
+class LoadFishAudio:
     @classmethod
     def INPUT_TYPES(s):
         files = [f for f in os.listdir(input_path) if os.path.isfile(os.path.join(input_path, f)) and f.split('.')[-1] in ["wav", "mp3","WAV","flac","m4a"]]
