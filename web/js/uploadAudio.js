@@ -195,7 +195,7 @@ ComfyWidgets.AUDIOPLOAD = audioUpload;
 app.registerExtension({
 	name: "FishSpeech.UploadAudio",
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
-		if (nodeData?.name == "LoadAudio") {
+		if (nodeData?.name == "LoadFishAudio") {
 			nodeData.input.required.upload = ["AUDIOPLOAD"];
 		}
 	},
