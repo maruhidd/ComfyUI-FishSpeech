@@ -82,21 +82,20 @@ class FishSpeech_INFER_SRT:
                     temperature,compile,seed,half,iterative_prompt,max_length,
                     chunk_length):
         
-        filename = f"text2semantic-sft-{text2semantic_type}-v1-4k.pth"
+        filename = f"model.pth"
         t2s_model_path = os.path.join(checkpoint_path, filename)
         if not os.path.isfile(t2s_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename=filename,local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename=filename,local_dir=checkpoint_path,token=hf_token)
         
-        vq_model_path = os.path.join(checkpoint_path, "vq-gan-group-fsq-2x1024.pth")
+        vq_model_path = os.path.join(checkpoint_path, "firefly-gan-vq-fsq-8x1024-21hz-generator.pth")
         if not os.path.isfile(vq_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="vq-gan-group-fsq-2x1024.pth",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="firefly-gan-vq-fsq-8x1024-21hz-generator.pth",local_dir=checkpoint_path,token=hf_token)
         
         tokenizer_path = os.path.join(checkpoint_path, "tokenizer.json")
         
         if not os.path.isfile(tokenizer_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer_config.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="special_tokens_map.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="config.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="special_tokens.json",local_dir=checkpoint_path,token=hf_token)
         
         with open(text, 'r', encoding="utf-8") as file:
             text_file_content = file.read()
@@ -280,21 +279,20 @@ class FishSpeech_INFER:
         with open(prompt_text_by_srt, 'r', encoding="utf-8") as file:
             file_content = file.read()
         prompt_text = ' '.join([sub.content for sub in list(SrtPare(file_content))])
-        filename = f"text2semantic-sft-{text2semantic_type}-v1-4k.pth"
+        filename = f"model.pth"
         t2s_model_path = os.path.join(checkpoint_path, filename)
         if not os.path.isfile(t2s_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename=filename,local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename=filename,local_dir=checkpoint_path,token=hf_token)
         
-        vq_model_path = os.path.join(checkpoint_path, "vq-gan-group-fsq-2x1024.pth")
+        vq_model_path = os.path.join(checkpoint_path, "firefly-gan-vq-fsq-8x1024-21hz-generator.pth")
         if not os.path.isfile(vq_model_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="vq-gan-group-fsq-2x1024.pth",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="firefly-gan-vq-fsq-8x1024-21hz-generator.pth",local_dir=checkpoint_path,token=hf_token)
         
         tokenizer_path = os.path.join(checkpoint_path, "tokenizer.json")
         
         if not os.path.isfile(tokenizer_path):
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="tokenizer_config.json",local_dir=checkpoint_path,token=hf_token)
-            hf_hub_download(repo_id="fishaudio/fish-speech-1",filename="special_tokens_map.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="config.json",local_dir=checkpoint_path,token=hf_token)
+            hf_hub_download(repo_id="fishaudio/fish-speech-1.5",filename="special_tokens.json",local_dir=checkpoint_path,token=hf_token)
         
         python_exec = sys.executable or "python"
         
