@@ -31,8 +31,6 @@ try:
 except ImportError:
     import logging as logger
 
-# 今のpath
-print(os.path.abspath(__file__))
 
 try:
     from fish_speech.text.chn_text_norm.text import Text as ChnNormedText
@@ -77,13 +75,17 @@ except ImportError as e:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
+# 今のpath = /root/comfy/ComfyUI/custom_nodes/ComfyUI-FishSpeech/nodes.py
+print("launch_thread_safe_queue" , launch_thread_safe_queue)
+
+
 # Initialize global variables
 llama_queue = None
 decoder_model = None
 
 def initialize_models():
     global llama_queue, decoder_model
-    
+    print("initialize_models launch_thread_safe_queue" , launch_thread_safe_queue)
     if llama_queue is None or decoder_model is None:
         try:
             logger.info("Loading Llama model...")
