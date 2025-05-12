@@ -24,7 +24,7 @@ if os.path.isfile("%s/fish_speech.pth" % (site_packages_root)):
 
 
 WEB_DIRECTORY = "./web"
-from .__nodes import LoadFishAudio,PreViewAudio,LoadSRT,FishSpeech_INFER,FishSpeech_INFER_SRT
+from .nodes import LoadFishAudio,PreViewAudio,LoadSRT,FishSpeech_INFER,FishSpeech_INFER_SRT
 
 NODE_CLASS_MAPPINGS = {
     "LoadFishAudio": LoadFishAudio,
