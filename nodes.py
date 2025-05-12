@@ -6,7 +6,7 @@ import wave
 import numpy as np
 import gc
 import torch
-from subprocess import Popen
+from subprocess import Popen, PIPE
 import folder_paths
 import cuda_malloc
 import audiotsm
@@ -184,8 +184,10 @@ class FishSpeech_INFER_SRT:
                 out_put_path = os.path.join(fish_tmp_out, "SPK0")
             os.makedirs(out_put_path, exist_ok=True)
             
-            # Add normalize flag if enabled
-            normalize_flag = "--normalize" if normalize_text else "--no-normalize"
+            # Handle normalize flag correctly
+            normalize_flag = ""
+            if normalize_text:
+                normalize_flag = "--normalize"
             
             step_2 = f'{python_exec} {parent_directory}/tools/llama/generate.py --text "{new_text}" --prompt-text "{new_prompt_text}" \
             --prompt-tokens {npy_path} --config-name {config_name} --num-samples {num_samples} --max-new-tokens {max_new_tokens} \
@@ -194,15 +196,29 @@ class FishSpeech_INFER_SRT:
                         --seed {seed} {"--half" if half else "--no-half"} {normalize_flag} \
                             --chunk-length {chunk_length} --output-path {out_put_path}'
             print("step 2 ", step_2)
-            p2 = Popen(step_2, shell=True)
-            p2.wait()
+            p2 = Popen(step_2, shell=True, stdout=PIPE, stderr=PIPE)
+            stdout, stderr = p2.communicate()
+            if p2.returncode != 0:
+                print(f"Error in step 2: {stderr.decode()}")
+                continue
             
             step_2_npy = os.path.join(out_put_path, "codes_0.npy")
+            if not os.path.exists(step_2_npy):
+                print(f"Error: Output file {step_2_npy} not found")
+                continue
+                
             out_wav_path = os.path.join(out_put_path, f"{i}_fish_speech.wav")
             step_3 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {step_2_npy} -o {out_wav_path} -ckpt {vq_model_path} -d {device}"
             print("step 3 ", step_3)
-            p3 = Popen(step_3, shell=True)
-            p3.wait()
+            p3 = Popen(step_3, shell=True, stdout=PIPE, stderr=PIPE)
+            stdout, stderr = p3.communicate()
+            if p3.returncode != 0:
+                print(f"Error in step 3: {stderr.decode()}")
+                continue
+                
+            if not os.path.exists(out_wav_path):
+                print(f"Error: Output file {out_wav_path} not found")
+                continue
             
             text_audio = AudioSegment.from_file(out_wav_path)
             text_audio_dur_time = text_audio.duration_seconds * 1000
@@ -325,14 +341,23 @@ class FishSpeech_INFER:
         npy_path = os.path.join(fish_tmp_out, os.path.basename(prompt_audio))
         step_1 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {prompt_audio} -o {npy_path} -ckpt {vq_model_path} -d {device}"
         print("step 1 ", step_1)
-        p = Popen(step_1, shell=True)
-        p.wait()
+        p = Popen(step_1, shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p.communicate()
+        if p.returncode != 0:
+            print(f"Error in step 1: {stderr.decode()}")
+            return ("Error processing audio", )
         
         config_name = f"dual_ar_2_codebook_{text2semantic_type}"
         npy_path = os.path.join(fish_tmp_out, os.path.basename(prompt_audio)[:-4]+".npy")
         
-        # Add normalize flag if enabled
-        normalize_flag = "--normalize" if normalize_text else "--no-normalize"
+        if not os.path.exists(npy_path):
+            print(f"Error: NPY file {npy_path} not found")
+            return ("Error processing audio", )
+        
+        # Handle normalize flag correctly
+        normalize_flag = ""
+        if normalize_text:
+            normalize_flag = "--normalize"
         
         step_2 = f'{python_exec} {parent_directory}/tools/llama/generate.py --text "{text}" --prompt-text "{prompt_text}" \
             --prompt-tokens {npy_path} --config-name {config_name} --num-samples {num_samples} --max-new-tokens {max_new_tokens} \
@@ -341,15 +366,29 @@ class FishSpeech_INFER:
                         --seed {seed} {"--half" if half else "--no-half"} {normalize_flag} \
                             --chunk-length {chunk_length} --output-path {fish_tmp_out}'
         print("step 2 ", step_2)
-        p2 = Popen(step_2, shell=True)
-        p2.wait()
+        p2 = Popen(step_2, shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p2.communicate()
+        if p2.returncode != 0:
+            print(f"Error in step 2: {stderr.decode()}")
+            return ("Error generating speech", )
         
         step_2_npy = os.path.join(fish_tmp_out, "codes_0.npy")
+        if not os.path.exists(step_2_npy):
+            print(f"Error: Output file {step_2_npy} not found")
+            return ("Error generating speech", )
+            
         out_wav_path = os.path.join(output_path, f"{int(time.time())}_fish_speech.wav")
         step_3 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {step_2_npy} -o {out_wav_path} -ckpt {vq_model_path} -d {device}"
         print("step 3 ", step_3)
-        p3 = Popen(step_3, shell=True)
-        p3.wait()
+        p3 = Popen(step_3, shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p3.communicate()
+        if p3.returncode != 0:
+            print(f"Error in step 3: {stderr.decode()}")
+            return ("Error generating audio", )
+        
+        if not os.path.exists(out_wav_path):
+            print(f"Error: Output file {out_wav_path} not found")
+            return ("Error generating audio", )
         
         # Clean up memory
         if torch.cuda.is_available():
@@ -456,13 +495,22 @@ class FishSpeech_INFER_V15:
             npy_path = os.path.join(fish_tmp_out, "reference.npy")
             step_1 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {reference_audio} -o {npy_path} -ckpt {vq_model_path} -d {device}"
             print("step 1 ", step_1)
-            p = Popen(step_1, shell=True)
-            p.wait()
-            
+            p = Popen(step_1, shell=True, stdout=PIPE, stderr=PIPE)
+            stdout, stderr = p.communicate()
+            if p.returncode != 0:
+                print(f"Error in step 1: {stderr.decode()}")
+                return ("Error processing reference audio", )
+                
+            if not os.path.exists(npy_path):
+                print(f"Error: NPY file {npy_path} not found")
+                return ("Error processing reference audio", )
+                
             references_arg = f"--prompt-tokens {npy_path} --prompt-text \"{reference_text}\""
         
-        # Add normalize flag if enabled
-        normalize_flag = "--normalize" if normalize_text else "--no-normalize"
+        # Handle normalize flag correctly
+        normalize_flag = ""
+        if normalize_text:
+            normalize_flag = "--normalize"
         
         # Create output directory
         out_put_path = os.path.join(fish_tmp_out, "v15_output")
@@ -475,15 +523,29 @@ class FishSpeech_INFER_V15:
                         --seed {seed} {"--half" if half else "--no-half"} {normalize_flag} \
                             --chunk-length {chunk_length} --output-path {out_put_path}'
         print("step 2 ", step_2)
-        p2 = Popen(step_2, shell=True)
-        p2.wait()
+        p2 = Popen(step_2, shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p2.communicate()
+        if p2.returncode != 0:
+            print(f"Error in step 2: {stderr.decode()}")
+            return ("Error generating speech", )
         
         step_2_npy = os.path.join(out_put_path, "codes_0.npy")
+        if not os.path.exists(step_2_npy):
+            print(f"Error: Output file {step_2_npy} not found")
+            return ("Error generating speech", )
+            
         out_wav_path = os.path.join(output_path, f"{int(time.time())}_fish_speech_v15.wav")
         step_3 = f"{python_exec} {parent_directory}/tools/vqgan/inference.py -i {step_2_npy} -o {out_wav_path} -ckpt {vq_model_path} -d {device}"
         print("step 3 ", step_3)
-        p3 = Popen(step_3, shell=True)
-        p3.wait()
+        p3 = Popen(step_3, shell=True, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p3.communicate()
+        if p3.returncode != 0:
+            print(f"Error in step 3: {stderr.decode()}")
+            return ("Error generating audio", )
+            
+        if not os.path.exists(out_wav_path):
+            print(f"Error: Output file {out_wav_path} not found")
+            return ("Error generating audio", )
         
         # Clean up memory
         if torch.cuda.is_available():

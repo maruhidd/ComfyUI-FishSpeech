@@ -12,57 +12,77 @@ Directory structure:
 ------02.wav
 ------......
 Use 
-python tools/whisper_asr.py --audio_dir pre_data_root/SP_1 --save_dir data/SP_1 
+python tools/whisper_asr.py --audio-dir pre_data_root/SP_1 --save-dir data/SP_1 
 to transcribe the first speaker.
 
 Use 
-python tools/whisper_asr.py --audio_dir pre_data_root/SP_2 --save_dir data/SP_2 
+python tools/whisper_asr.py --audio-dir pre_data_root/SP_2 --save-dir data/SP_2 
 to transcribe the second speaker.
 
 Note: Be aware of your audio sample rate, which defaults to 44.1kHz.
 """
+
+import re
 from pathlib import Path
 
 import click
-import librosa
 import soundfile as sf
-import whisper
+from faster_whisper import WhisperModel
 from loguru import logger
-from merge_asr_files import merge_and_delete_files
+from pydub import AudioSegment
 from tqdm import tqdm
 
-from fish_speech.utils.file import AUDIO_EXTENSIONS, list_files
+from tools.file import AUDIO_EXTENSIONS, list_files
 
 
 @click.command()
-@click.option("--model-size", default="large", help="Size of the Whisper model")
+@click.option("--model-size", default="large-v3", help="Size of the Whisper model")
+@click.option(
+    "--compute-type",
+    default="float16",
+    help="Computation Precision of the Whisper model [float16 / int8_float16 / int8]",
+)
 @click.option("--audio-dir", required=True, help="Directory containing audio files")
 @click.option(
     "--save-dir", required=True, help="Directory to save processed audio files"
 )
 @click.option(
     "--sample-rate",
-    default=None,
+    default=44100,
     type=int,
     help="Output sample rate, default to input sample rate",
 )
-@click.option("--device", default="cuda", help="Device to use")
-@click.option("--language", default="ZH", help="Language of the transcription")
-def main(model_size, audio_dir, save_dir, sample_rate, device, language):
-    logger.info("Loading / Downloading OpenAI Whisper model...")
-    model = whisper.load_model(
-        name=model_size,
+@click.option("--device", default="cuda", help="Device to use [cuda / cpu]")
+@click.option("--language", default="auto", help="Language of the transcription")
+@click.option("--initial-prompt", default=None, help="Initial prompt for transcribing")
+def main(
+    model_size,
+    compute_type,
+    audio_dir,
+    save_dir,
+    sample_rate,
+    device,
+    language,
+    initial_prompt,
+):
+    logger.info("Loading / Downloading Faster Whisper model...")
+
+    model = WhisperModel(
+        model_size,
         device=device,
-        download_root=str(Path(".cache/whisper").resolve()),
+        compute_type=compute_type,
+        download_root="faster_whisper",
     )
+
     logger.info("Model loaded.")
 
     save_path = Path(save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
-    original_files = []
+
     audio_files = list_files(
         path=audio_dir, extensions=AUDIO_EXTENSIONS, recursive=True
     )
+
     for file_path in tqdm(audio_files, desc="Processing audio file"):
         file_stem = file_path.stem
         file_suffix = file_path.suffix
@@ -70,44 +90,87 @@ def main(model_size, audio_dir, save_dir, sample_rate, device, language):
         rel_path = Path(file_path).relative_to(audio_dir)
         (save_path / rel_path.parent).mkdir(parents=True, exist_ok=True)
 
-        if (save_path / rel_path.parent / f"{rel_path.stem}.wav").exists() and (
-            save_path / rel_path.parent / f"{rel_path.stem}.lab"
-        ).exists():
-            continue
+        audio = AudioSegment.from_file(file_path)
 
-        audio, sr = librosa.load(file_path, sr=sample_rate, mono=False)
-        transcription = model.transcribe(str(file_path), language=language)
+        segments, info = model.transcribe(
+            file_path,
+            beam_size=5,
+            language=None if language == "auto" else language,
+            initial_prompt=initial_prompt,
+        )
 
-        for segment in transcription.get("segments", []):
-            id, text, start, end = (
-                segment["id"],
-                segment["text"],
-                segment["start"],
-                segment["end"],
+        print(
+            "Detected language '%s' with probability %f"
+            % (info.language, info.language_probability)
+        )
+        print("Total len(ms): ", len(audio))
+
+        whole_text = None
+        for segment in segments:
+            id, start, end, text = (
+                segment.id,
+                segment.start,
+                segment.end,
+                segment.text,
             )
+            print("Segment %03d [%.2fs -> %.2fs] %s" % (id, start, end, text))
+            if not whole_text:
+                whole_text = text
+            else:
+                whole_text += ", " + text
 
-            extract = audio[..., int(start * sr) : int(end * sr)]
-            audio_save_path = (
-                save_path / rel_path.parent / f"{file_stem}-{id}{file_suffix}"
-            )
-            sf.write(
-                audio_save_path,
-                extract,
-                samplerate=sr,
-            )
-            original_files.append(audio_save_path)
+        whole_text += "."
 
-            transcript_save_path = save_path / rel_path.parent / f"{file_stem}-{id}.lab"
-            with open(
-                transcript_save_path,
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(text)
-            original_files.append(transcript_save_path)
+        audio_save_path = save_path / rel_path.parent / f"{file_stem}{file_suffix}"
+        audio.export(audio_save_path, format=file_suffix[1:])
+        print(f"Exported {audio_save_path}")
 
-    merge_and_delete_files(save_dir, original_files)
+        transcript_save_path = save_path / rel_path.parent / f"{file_stem}.lab"
+        with open(
+            transcript_save_path,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write(whole_text)
 
 
 if __name__ == "__main__":
     main()
+    exit(0)
+
+    audio = AudioSegment.from_wav(
+        r"D:\PythonProject\原神语音中文\胡桃\vo_hutao_draw_appear.wav"
+    )
+
+    model_size = "large-v3"
+
+    model = WhisperModel(
+        model_size,
+        device="cuda",
+        compute_type="float16",
+        download_root="faster_whisper",
+    )
+
+    segments, info = model.transcribe(
+        r"D:\PythonProject\原神语音中文\胡桃\vo_hutao_draw_appear.wav",
+        beam_size=5,
+    )
+
+    print(
+        "Detected language '%s' with probability %f"
+        % (info.language, info.language_probability)
+    )
+    print("Total len(ms): ", len(audio))
+
+    for i, segment in enumerate(segments):
+        print(
+            "Segment %03d [%.2fs -> %.2fs] %s"
+            % (i, segment.start, segment.end, segment.text)
+        )
+        start_ms = int(segment.start * 1000)
+        end_ms = int(segment.end * 1000)
+        segment_audio = audio[start_ms:end_ms]
+        segment_audio.export(f"segment_{i:03d}.wav", format="wav")
+        print(f"Exported segment_{i:03d}.wav")
+
+    print("All segments have been exported.")

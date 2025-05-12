@@ -46,5 +46,28 @@ please update your `torch`
 ## Tutorial
 [Demo](https://www.bilibili.com/video/BV1Tx4y1B7zE/)
 
+## License
+
+This project is dual-licensed:
+
+- **Code**: The code in this repository is licensed under the [BSD 3-Clause License](LICENSE).
+
+- **Models and Generated Content**: The models and any content generated using Fish-Speech are licensed under the [CC BY-NC-SA 4.0 License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+### CC BY-NC-SA 4.0 License
+
+The Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0) allows you to:
+
+- **Share**: Copy and redistribute the material in any medium or format
+- **Adapt**: Remix, transform, and build upon the material
+
+Under the following terms:
+
+- **Attribution**: You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+- **NonCommercial**: You may not use the material for commercial purposes.
+- **ShareAlike**: If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+
+For more details, see the [full license text](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+
 ## Thanks
 - [fish-speech](https://github.com/fishaudio/fish-speech.git)

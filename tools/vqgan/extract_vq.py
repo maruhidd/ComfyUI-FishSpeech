@@ -17,13 +17,19 @@ from lightning import LightningModule
 from loguru import logger
 from omegaconf import OmegaConf
 
-from fish_speech.utils.file import AUDIO_EXTENSIONS, list_files, load_filelist
+from tools.file import AUDIO_EXTENSIONS, list_files, load_filelist
 
 # register eval resolver
 OmegaConf.register_new_resolver("eval", eval)
 # This file is used to convert the audio files to text files using the Whisper model.
 # It's mainly used to generate the training data for the VQ model.
 
+backends = torchaudio.list_audio_backends()
+
+if "ffmpeg" in backends:
+    backend = "ffmpeg"
+else:
+    backend = "soundfile"
 
 RANK = int(os.environ.get("SLURM_PROCID", 0))
 WORLD_SIZE = int(os.environ.get("SLURM_NTASKS", 1))
@@ -41,23 +47,31 @@ logger.add(sys.stderr, format=logger_format)
 
 @lru_cache(maxsize=1)
 def get_model(
-    config_name: str = "vqgan_pretrain",
-    checkpoint_path: str = "checkpoints/vq-gan-group-fsq-2x1024.pth",
+    config_name: str = "firefly_gan_vq",
+    checkpoint_path: str = "checkpoints/fish-speech-1.4/firefly-gan-vq-fsq-8x1024-21hz-generator.pth",
+    device: str | torch.device = "cuda",
 ):
     with initialize(version_base="1.3", config_path="../../fish_speech/configs"):
         cfg = compose(config_name=config_name)
 
-    model: LightningModule = instantiate(cfg.model)
+    model = instantiate(cfg)
     state_dict = torch.load(
         checkpoint_path,
-        map_location=model.device,
+        map_location=device,
     )
     if "state_dict" in state_dict:
         state_dict = state_dict["state_dict"]
 
+    if any("generator" in k for k in state_dict):
+        state_dict = {
+            k.replace("generator.", ""): v
+            for k, v in state_dict.items()
+            if "generator." in k
+        }
+
     model.load_state_dict(state_dict, strict=False)
     model.eval()
-    model.cuda()
+    model.to(device)
 
     logger.info(f"Loaded model")
     return model
@@ -73,7 +87,7 @@ def process_batch(files: list[Path], model) -> float:
     for file in files:
         try:
             wav, sr = torchaudio.load(
-                str(file), backend="sox" if sys.platform == "linux" else "soundfile"
+                str(file), backend=backend
             )  # Need to install libsox-dev
         except Exception as e:
             logger.error(f"Error reading {file}: {e}")
@@ -82,8 +96,10 @@ def process_batch(files: list[Path], model) -> float:
         if wav.shape[0] > 1:
             wav = wav.mean(dim=0, keepdim=True)
 
-        wav = torchaudio.functional.resample(wav.cuda(), sr, model.sampling_rate)[0]
-        total_time += len(wav) / model.sampling_rate
+        wav = torchaudio.functional.resample(
+            wav.cuda(), sr, model.spec_transform.sample_rate
+        )[0]
+        total_time += len(wav) / model.spec_transform.sample_rate
         max_length = max(max_length, len(wav))
 
         wavs.append(wav)
@@ -120,10 +136,10 @@ def process_batch(files: list[Path], model) -> float:
 @click.command()
 @click.argument("folder")
 @click.option("--num-workers", default=1)
-@click.option("--config-name", default="vqgan_pretrain")
+@click.option("--config-name", default="firefly_gan_vq")
 @click.option(
     "--checkpoint-path",
-    default="checkpoints/vq-gan-group-fsq-2x1024.pth",
+    default="checkpoints/fish-speech-1.4/firefly-gan-vq-fsq-8x1024-21hz-generator.pth",
 )
 @click.option("--batch-size", default=64)
 @click.option("--filelist", default=None, type=Path)
