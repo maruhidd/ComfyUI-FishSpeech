@@ -31,6 +31,9 @@ try:
 except ImportError:
     import logging as logger
 
+# 今のpath
+print(os.path.abspath(__file__))
+
 try:
     from fish_speech.text.chn_text_norm.text import Text as ChnNormedText
     from fish_speech.utils import autocast_exclude_mps, set_seed
